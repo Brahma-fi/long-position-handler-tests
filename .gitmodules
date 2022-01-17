@@ -1,0 +1,3 @@
+[submodule "contracts/long-position-handler"]
+	path = contracts/long-position-handler
+	url = https://github.com/Brahma-fi/long_position_handler.git
