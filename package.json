@@ -1,5 +1,9 @@
 {
-  "name": "hardhat-project",
+  "name": "long-position-handler-tests",
+  "scripts": {
+    "test": "npx hardhat test",
+    "cForkTest": "npx hardhat test --network"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.3",
     "@nomiclabs/hardhat-etherscan": "^2.1.8",
