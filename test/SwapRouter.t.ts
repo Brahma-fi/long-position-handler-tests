@@ -10,6 +10,7 @@ import {
 } from "../typechain";
 import axios from "axios";
 import {assert} from "console";
+import {BigNumber} from "ethers";
 
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const WETH_ADDRESS = "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2";
@@ -22,9 +23,11 @@ let SwapRouter: ISwapRouter;
 
 const self = () => Signer.address;
 
-const getERC20Contract = async (address: string): Promise<SolmateERC20> => {
-  return (await ethers.getContractAt("SolmateERC20", address)) as SolmateERC20;
-};
+const getERC20Contract = async (address: string): Promise<SolmateERC20> =>
+  (await ethers.getContractAt("SolmateERC20", address)) as SolmateERC20;
+
+const getBalance = async (token: SolmateERC20): Promise<BigNumber> =>
+  await token.balanceOf(self());
 
 const swapToGetUSDC = async () => {
   const ethBalance = await Signer.getBalance();
@@ -61,10 +64,6 @@ const get1inchQuote = async (
   const {data, status} = await axios.get(
     `https://api.1inch.io/v4.0/1/swap?fromTokenAddress=${from}&toTokenAddress=${to}&amount=${amount}&fromAddress=${SwapRouter.address}&slippage=5&disableEstimate=true`,
   );
-  console.log(
-    `[API CALL] https://api.1inch.io/v4.0/1/swap?fromTokenAddress=${from}&toTokenAddress=${to}&amount=${amount}&fromAddress=${SwapRouter.address}&slippage=5&disableEstimate=true`,
-  );
-
   if (status === 200) {
     return data.tx.data;
   }
@@ -110,33 +109,48 @@ describe("SwapRouter", function () {
 
   it("USDC -> CRV", async () => {
     const CRV = await getERC20Contract(await SwapRouter.CRV());
-    const usdcBal = await USDC.balanceOf(self());
+    const usdcBal = await getBalance(USDC);
 
     expect(usdcBal.toNumber()).to.be.greaterThan(0);
-    expect((await CRV.balanceOf(self())).toNumber()).to.equal(0);
+    expect((await getBalance(CRV)).toNumber()).to.equal(0);
 
     const callData = (await get1inchQuote(
-      await SwapRouter.USDC(),
-      await SwapRouter.CRV(),
+      USDC.address,
+      CRV.address,
       usdcBal.toString(),
     ))!;
 
     USDC.approve(SwapRouter.address, usdcBal);
     await SwapRouter.estimateAndSwapTokens(
       true,
-      await SwapRouter.CRV(),
+      CRV.address,
       usdcBal,
       self(),
-      5,
       callData,
     );
 
-    const crvBal = await CRV.balanceOf(self());
-    const newUsdcBal = await USDC.balanceOf(self());
+    const crvBal = await getBalance(CRV);
+    const newUsdcBal = await getBalance(USDC);
 
     assert(newUsdcBal.lt(usdcBal));
     assert(crvBal.gt(0));
   });
 
-  it("CRV -> CVXCRV", async () => {});
+  it("CRV -> CVXCRV", async () => {
+    const CRV = await getERC20Contract(await SwapRouter.CRV());
+    const CVXCRV = await getERC20Contract(await SwapRouter.CVXCRV());
+    const [crvBal, cvxcrvBal] = [
+      await CRV.balanceOf(self()),
+      await CVXCRV.balanceOf(self()),
+    ];
+
+    assert((await getBalance(CRV)).gt(0));
+    assert((await getBalance(CVXCRV)).eq(0));
+
+    await CRV.approve(SwapRouter.address, crvBal);
+    await SwapRouter.swapOnCRVCVXCRVPool(true, crvBal, self());
+
+    assert((await getBalance(CRV)).lt(crvBal));
+    assert((await getBalance(CVXCRV)).gt(cvxcrvBal));
+  });
 });
