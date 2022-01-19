@@ -153,4 +153,34 @@ describe("SwapRouter", function () {
     assert((await getBalance(CRV)).lt(crvBal));
     assert((await getBalance(CVXCRV)).gt(cvxcrvBal));
   });
+
+  it("CVXCRV -> USDC", async () => {
+    const CVXCRV = await getERC20Contract(await SwapRouter.CVXCRV());
+    const usdcBal = await getBalance(USDC);
+    const cvxcrvBal = await getBalance(CVXCRV);
+
+    expect((await getBalance(USDC)).toNumber()).to.equal(0);
+    assert((await getBalance(CVXCRV)).gt(0));
+
+    const callData = (await get1inchQuote(
+      CVXCRV.address,
+      USDC.address,
+      cvxcrvBal.toString(),
+    ))!;
+
+    CVXCRV.approve(SwapRouter.address, cvxcrvBal);
+    await SwapRouter.estimateAndSwapTokens(
+      false,
+      CVXCRV.address,
+      cvxcrvBal,
+      self(),
+      callData,
+    );
+
+    const newCvxcrvBal = await getBalance(CVXCRV);
+    const newUsdcBal = await getBalance(USDC);
+
+    assert(newCvxcrvBal.lt(cvxcrvBal));
+    assert(newUsdcBal.gt(usdcBal));
+  });
 });
