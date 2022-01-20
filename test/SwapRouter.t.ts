@@ -18,14 +18,13 @@ describe("SwapRouter", function () {
     Signer = (await ethers.getSigners())[0];
     testUtils = new TestUtils(Signer);
 
+    await testUtils.deploySwapRouter();
+
     USDC = await testUtils.getERC20Contract(USDC_ADDRESS);
     await testUtils.swapToGetUSDC();
 
     console.log("ETH Bal:", (await Signer.getBalance()).toString());
-    console.log(
-      "USDC Bal:",
-      (await USDC.balanceOf(testUtils.self())).toString(),
-    );
+    console.log("USDC Bal:", (await testUtils.getBalance(USDC)).toString());
   });
 
   it("should deploy correctly", async () => {

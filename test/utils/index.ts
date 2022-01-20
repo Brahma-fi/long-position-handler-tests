@@ -21,7 +21,6 @@ class TestUtils {
 
   constructor(_signer: SignerWithAddress) {
     this.Signer = _signer;
-    this.deploySwapRouter();
   }
 
   self = () => this.Signer.address;
