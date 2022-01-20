@@ -51,7 +51,7 @@ const config: HardhatUserConfig = {
     hardhat: {
       forking: {
         url: process.env.MAINNET_URL || "",
-        blockNumber: 14035340,
+        blockNumber: 14041658,
       },
     },
     ropsten: {
