@@ -4,6 +4,8 @@ import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {assert, expect} from "chai";
 import {ethers} from "hardhat";
 import {
+  IChainlinkAggregatorV3,
+  IConvexRewards,
   LongPositionHandler as ILongPositionHandler,
   LongPositionHandler__factory,
   SolmateERC20,
@@ -106,22 +108,54 @@ describe.only("LongPositionHandler", function () {
     checkAndRevert(initialPosition.eq(0), initialPosition, 0);
 
     const usdcBal = await USDC.balanceOf(LongPositionHandler.address);
-    console.log("USDC in handler:", usdcBal.toString());
     const swapData = (await testUtils.get1inchSwapData(
       USDC.address,
       await testUtils.SwapRouter.CRV(),
       usdcBal.toString(),
     ))!;
-    console.log("swap data:", swapData);
 
     await LongPositionHandler.openPosition(usdcBal, true, swapData);
 
     const finalPosition = await LongPositionHandler.positionInUSDC();
-    console.log("staked CVXCRV:", finalPosition.toString());
     checkAndRevert(
       initialPosition.lt(finalPosition),
       initialPosition,
       finalPosition,
+    );
+  });
+
+  it("should show position correctly", async () => {
+    const crvusdOracle = (await ethers.getContractAt(
+      "IChainlinkAggregatorV3",
+      "0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f",
+    )) as IChainlinkAggregatorV3;
+
+    const {answer} = await crvusdOracle.latestRoundData();
+
+    const baseRewardPool = (await ethers.getContractAt(
+      "IConvexRewards",
+      await LongPositionHandler.baseRewardPool(),
+    )) as IConvexRewards;
+
+    const stakedCVXCRV = await baseRewardPool.balanceOf(
+      LongPositionHandler.address,
+    );
+
+    const stakedCVXCRVInUSDC = stakedCVXCRV.mul(answer).div(1e8).toString();
+    const positionInUSDC = await LongPositionHandler.positionInUSDC();
+
+    const deviation = Math.abs(
+      positionInUSDC
+        .sub(stakedCVXCRVInUSDC)
+        .mul(100)
+        .div(positionInUSDC)
+        .toNumber(),
+    );
+
+    checkAndRevert(
+      deviation < 10,
+      stakedCVXCRVInUSDC.toString(),
+      positionInUSDC.toString(),
     );
   });
 
