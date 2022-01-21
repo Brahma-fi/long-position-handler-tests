@@ -38,7 +38,7 @@ class TestUtils {
       WETH_ADDRESS,
     );
 
-    await WETH.connect(this.Signer).deposit({value: ethBalance.div(4)});
+    await WETH.connect(this.Signer).deposit({value: ethBalance.div(100)});
     await WETH.connect(this.Signer).approve(
       UNISWAP_ROUTER_ADDRESS,
       WETH.balanceOf(this.self()),
@@ -78,15 +78,16 @@ class TestUtils {
     await this.SwapRouter.deployed();
   };
 
-  get1inchQuote = async (
+  get1inchSwapData = async (
     from: string,
     to: string,
     amount: string,
   ): Promise<string | undefined> => {
-    const {data, status} = await axios.get(
-      `https://api.1inch.io/v4.0/1/swap?fromTokenAddress=${from}&toTokenAddress=${to}&amount=${amount}&fromAddress=${this.SwapRouter.address}&slippage=5&disableEstimate=true`,
-    );
+    const query = `https://api.1inch.io/v4.0/1/swap?fromTokenAddress=${from}&toTokenAddress=${to}&amount=${amount}&fromAddress=${this.SwapRouter.address}&slippage=50&disableEstimate=true`;
+    const {data, status} = await axios.get(query);
+
     if (status === 200) {
+      console.log(`[API] ${query}`);
       return data.tx.data;
     }
 

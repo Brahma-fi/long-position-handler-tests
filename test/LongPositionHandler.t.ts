@@ -1,7 +1,7 @@
 /* eslint-disable camelcase */
 /* eslint-disable node/no-missing-import */
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
-import {assert} from "chai";
+import {assert, expect} from "chai";
 import {ethers} from "hardhat";
 import {
   LongPositionHandler as ILongPositionHandler,
@@ -17,6 +17,10 @@ let Signer: SignerWithAddress;
 let testUtils: TestUtils;
 
 let LongPositionHandler: ILongPositionHandler;
+
+const checkAndRevert = (condition: boolean, a: any, b: any) => {
+  assert(condition, `a: ${a} ; b: ${b}`);
+};
 
 describe.only("LongPositionHandler", function () {
   before(async () => {
@@ -58,4 +62,68 @@ describe.only("LongPositionHandler", function () {
       (await LongPositionHandler.swapRouter()) === testUtils.SwapRouter.address,
     );
   });
+
+  it("should be whitelisted on swapRouter as a handler", async () => {
+    expect(
+      await testUtils.SwapRouter.positionHandlers(LongPositionHandler.address),
+    ).to.eq(false);
+    await testUtils.SwapRouter.addPositionHandler(LongPositionHandler.address);
+    expect(
+      await testUtils.SwapRouter.positionHandlers(LongPositionHandler.address),
+    ).to.eq(true);
+  });
+
+  it("should deposit correctly", async () => {
+    const initialHandlerBalance = await USDC.balanceOf(
+      LongPositionHandler.address,
+    );
+    const initialSignerBalance = await testUtils.getBalance(USDC);
+    assert(initialHandlerBalance.eq(0));
+    assert(initialSignerBalance.gt(0));
+
+    await USDC.approve(LongPositionHandler.address, initialSignerBalance);
+    await LongPositionHandler.deposit(initialSignerBalance);
+
+    const finalSignerBalance = await testUtils.getBalance(USDC);
+    const finalHandlerBalance = await USDC.balanceOf(
+      LongPositionHandler.address,
+    );
+
+    checkAndRevert(
+      finalSignerBalance.lt(initialSignerBalance),
+      finalSignerBalance,
+      initialSignerBalance,
+    );
+    checkAndRevert(
+      finalHandlerBalance.gt(initialHandlerBalance),
+      finalHandlerBalance,
+      initialHandlerBalance,
+    );
+  });
+
+  it("should open position correctly", async () => {
+    const initialPosition = await LongPositionHandler.positionInUSDC();
+    checkAndRevert(initialPosition.eq(0), initialPosition, 0);
+
+    const usdcBal = await USDC.balanceOf(LongPositionHandler.address);
+    console.log("USDC in handler:", usdcBal.toString());
+    const swapData = (await testUtils.get1inchSwapData(
+      USDC.address,
+      await testUtils.SwapRouter.CRV(),
+      usdcBal.toString(),
+    ))!;
+    console.log("swap data:", swapData);
+
+    await LongPositionHandler.openPosition(usdcBal, true, swapData);
+
+    const finalPosition = await LongPositionHandler.positionInUSDC();
+    console.log("staked CVXCRV:", finalPosition.toString());
+    checkAndRevert(
+      initialPosition.lt(finalPosition),
+      initialPosition,
+      finalPosition,
+    );
+  });
+
+  // it("should ")
 });

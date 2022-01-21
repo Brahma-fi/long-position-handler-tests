@@ -1,6 +1,7 @@
 {
   "name": "long-position-handler-tests",
   "scripts": {
+    "build": "npx hardhat compile",
     "test": "npx hardhat test",
     "cForkTest": "npx hardhat test --network"
   },

@@ -52,7 +52,7 @@ describe("SwapRouter", function () {
     expect(usdcBal.toNumber()).to.be.greaterThan(0);
     expect((await testUtils.getBalance(CRV)).toNumber()).to.equal(0);
 
-    const callData = (await testUtils.get1inchQuote(
+    const callData = (await testUtils.get1inchSwapData(
       USDC.address,
       CRV.address,
       usdcBal.toString(),
@@ -70,8 +70,8 @@ describe("SwapRouter", function () {
     const crvBal = await testUtils.getBalance(CRV);
     const newUsdcBal = await testUtils.getBalance(USDC);
 
-    assert(newUsdcBal.lt(usdcBal));
-    assert(crvBal.gt(0));
+    assert(newUsdcBal.lt(usdcBal), "USDC not swapped");
+    assert(crvBal.gt(0), "CRV not received");
   });
 
   it("CRV -> CVXCRV", async () => {
@@ -96,8 +96,11 @@ describe("SwapRouter", function () {
       testUtils.self(),
     );
 
-    assert((await testUtils.getBalance(CRV)).lt(crvBal));
-    assert((await testUtils.getBalance(CVXCRV)).gt(cvxcrvBal));
+    assert((await testUtils.getBalance(CRV)).lt(crvBal), "CRV not swapped");
+    assert(
+      (await testUtils.getBalance(CVXCRV)).gt(cvxcrvBal),
+      "CVXCRV not received",
+    );
   });
 
   it("CVXCRV -> USDC", async () => {
@@ -110,7 +113,7 @@ describe("SwapRouter", function () {
     expect((await testUtils.getBalance(USDC)).toNumber()).to.equal(0);
     assert((await testUtils.getBalance(CVXCRV)).gt(0));
 
-    const callData = (await testUtils.get1inchQuote(
+    const callData = (await testUtils.get1inchSwapData(
       CVXCRV.address,
       USDC.address,
       cvxcrvBal.toString(),
@@ -128,7 +131,7 @@ describe("SwapRouter", function () {
     const newCvxcrvBal = await testUtils.getBalance(CVXCRV);
     const newUsdcBal = await testUtils.getBalance(USDC);
 
-    assert(newCvxcrvBal.lt(cvxcrvBal));
-    assert(newUsdcBal.gt(usdcBal));
+    assert(newCvxcrvBal.lt(cvxcrvBal), "CVXCRV not swapped");
+    assert(newUsdcBal.gt(usdcBal), "USDC not received");
   });
 });
